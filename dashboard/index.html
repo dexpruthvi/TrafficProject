@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traffic AI Optimizer - Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #0a0a1a; color: #fff; }
+
+        /* HEADER */
+        .header {
+            background: linear-gradient(135deg, #1a1a3e, #0d0d2b);
+            padding: 16px 24px; border-bottom: 2px solid #333;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .header h1 { font-size: 1.3em; color: #00e5ff; }
+        .header .team { color: #888; font-size: 0.85em; }
+        .status-dot {
+            display: inline-block; width: 10px; height: 10px;
+            border-radius: 50%; background: #00e676; margin-right: 5px;
+            animation: blink 2s infinite;
+        }
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+        /* EMERGENCY BANNER */
+        .emergency-banner {
+            display: none; background: #ff0000; color: white;
+            text-align: center; padding: 14px; font-size: 1.2em;
+            font-weight: bold; animation: pulse 1s infinite;
+        }
+        .emergency-banner.active { display: block; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+        /* SIREN BANNER */
+        .siren-banner {
+            display: none; background: #ff6600; color: white;
+            text-align: center; padding: 10px; font-size: 1em; font-weight: bold;
+        }
+        .siren-banner.active { display: block; }
+
+        /* LAYOUT */
+        .container { max-width: 1300px; margin: 0 auto; padding: 16px; }
+
+        /* TOP ROW: 4 lane cards */
+        .lane-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr);
+            gap: 14px; margin-bottom: 16px;
+        }
+        @media (max-width: 900px) { .lane-grid { grid-template-columns: 1fr 1fr; } }
+
+        .lane-card {
+            background: #12122a; border-radius: 10px; padding: 16px;
+            border: 2px solid #222; transition: border-color 0.3s;
+        }
+        .lane-card.green { border-color: #00e676; }
+        .lane-card.red { border-color: #ff1744; }
+        .lane-card.yellow { border-color: #ffea00; }
+
+        .lane-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 12px;
+        }
+        .lane-header h3 { font-size: 1.1em; }
+        .signal-dot {
+            width: 18px; height: 18px; border-radius: 50%;
+        }
+        .signal-dot.green { background: #00e676; box-shadow: 0 0 12px #00e676; }
+        .signal-dot.red { background: #ff1744; box-shadow: 0 0 12px #ff1744; }
+        .signal-dot.yellow { background: #ffea00; box-shadow: 0 0 12px #ffea00; }
+
+        .stat { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #1a1a3e; }
+        .stat-label { color: #888; font-size: 0.85em; }
+        .stat-value { font-weight: bold; color: #00e5ff; font-size: 0.95em; }
+
+        .density-bar { margin-top: 10px; background: #1a1a3e; border-radius: 6px; height: 10px; overflow: hidden; }
+        .density-fill { height: 100%; border-radius: 6px; transition: width 0.5s; }
+
+        /* HEATMAP + CHART ROW */
+        .bottom-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+        @media (max-width: 900px) { .bottom-row { grid-template-columns: 1fr; } }
+
+        .panel {
+            background: #12122a; border-radius: 10px; padding: 18px;
+            border: 1px solid #222;
+        }
+        .panel h3 { color: #00e5ff; margin-bottom: 12px; font-size: 1em; }
+
+        /* HEATMAP */
+        .heatmap-grid {
+            display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
+            gap: 8px; height: 220px;
+        }
+        .heatmap-cell {
+            border-radius: 8px; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            font-weight: bold; transition: background 0.5s;
+        }
+        .heatmap-cell .lane-label { font-size: 0.9em; opacity: 0.9; }
+        .heatmap-cell .veh-count { font-size: 1.8em; }
+
+        /* STATS ROW */
+        .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 16px; }
+        @media (max-width: 900px) { .stats-row { grid-template-columns: 1fr 1fr; } }
+        .stat-card {
+            background: #12122a; border-radius: 10px; padding: 14px; text-align: center;
+            border: 1px solid #222;
+        }
+        .stat-card .big { font-size: 1.8em; font-weight: bold; color: #00e5ff; }
+        .stat-card .label { color: #888; font-size: 0.8em; margin-top: 4px; }
+
+        .footer { text-align: center; padding: 14px; color: #444; font-size: 0.8em; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1>Dynamic Self Traffic Flow Optimizer</h1>
+            <span class="team">Team Ryzen_4090Ti | India Innovates 2026</span>
+        </div>
+        <div>
+            <span class="status-dot"></span>
+            <span id="status-text" style="color:#00e676">LIVE</span>
+            <span id="time-text" style="color:#888; margin-left:10px;"></span>
+        </div>
+    </div>
+
+    <div class="emergency-banner" id="emergency-banner">
+        EMERGENCY CORRIDOR ACTIVE &mdash; All lanes RED except priority lane
+    </div>
+    <div class="siren-banner" id="siren-banner">
+        SIREN DETECTED &mdash; Confidence: <span id="siren-conf">0</span>%
+    </div>
+
+    <div class="container">
+
+        <!-- SUMMARY STATS -->
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="big" id="total-vehicles">0</div>
+                <div class="label">Total Vehicles</div>
+            </div>
+            <div class="stat-card">
+                <div class="big" id="busiest-lane">-</div>
+                <div class="label">Busiest Lane</div>
+            </div>
+            <div class="stat-card">
+                <div class="big" id="avg-wait">0s</div>
+                <div class="label">Avg Wait Time</div>
+            </div>
+            <div class="stat-card">
+                <div class="big" id="emergency-count">0</div>
+                <div class="label">Emergency Events</div>
+            </div>
+        </div>
+
+        <!-- 4 LANE CARDS -->
+        <div class="lane-grid" id="lane-grid"></div>
+
+        <!-- HEATMAP + HISTORY CHART -->
+        <div class="bottom-row">
+            <div class="panel">
+                <h3>Congestion Heatmap</h3>
+                <div class="heatmap-grid">
+                    <div class="heatmap-cell" id="heat-North">
+                        <span class="lane-label">North</span>
+                        <span class="veh-count" id="hcount-North">0</span>
+                    </div>
+                    <div class="heatmap-cell" id="heat-South">
+                        <span class="lane-label">South</span>
+                        <span class="veh-count" id="hcount-South">0</span>
+                    </div>
+                    <div class="heatmap-cell" id="heat-East">
+                        <span class="lane-label">East</span>
+                        <span class="veh-count" id="hcount-East">0</span>
+                    </div>
+                    <div class="heatmap-cell" id="heat-West">
+                        <span class="lane-label">West</span>
+                        <span class="veh-count" id="hcount-West">0</span>
+                    </div>
+                </div>
+            </div>
+            <div class="panel">
+                <h3>Vehicle Count Over Time</h3>
+                <canvas id="history-chart" height="220"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        Dynamic AI Traffic Flow Optimizer & Emergency Grid | YOLOv8 + Siren Audio Detection + Adaptive Signals
+    </div>
+
+    <script>
+    const LANES = ["North", "South", "East", "West"];
+    const LANE_COLORS = { North: "#00e676", South: "#ff1744", East: "#448aff", West: "#ffea00" };
+    let emergencyCount = 0;
+    let historyLabels = [];
+    let historyData = { North: [], South: [], East: [], West: [] };
+    let chart = null;
+
+    // ── Create lane cards ───────────────────────
+    function init() {
+        const grid = document.getElementById("lane-grid");
+        LANES.forEach(lane => {
+            grid.innerHTML += `
+                <div class="lane-card" id="card-${lane}">
+                    <div class="lane-header">
+                        <h3>${lane}</h3>
+                        <span class="signal-dot red" id="sig-${lane}"></span>
+                    </div>
+                    <div class="stat"><span class="stat-label">Vehicles</span><span class="stat-value" id="cnt-${lane}">0</span></div>
+                    <div class="stat"><span class="stat-label">Green Time</span><span class="stat-value" id="grn-${lane}">0s</span></div>
+                    <div class="stat"><span class="stat-label">Density</span><span class="stat-value" id="den-${lane}">0%</span></div>
+                    <div class="stat"><span class="stat-label">Est. Wait</span><span class="stat-value" id="wait-${lane}">0s</span></div>
+                    <div class="density-bar"><div class="density-fill" id="bar-${lane}" style="width:0%;background:${LANE_COLORS[lane]}"></div></div>
+                </div>`;
+        });
+        initChart();
+    }
+
+    // ── Chart.js history chart ──────────────────
+    function initChart() {
+        const ctx = document.getElementById("history-chart").getContext("2d");
+        chart = new Chart(ctx, {
+            type: "line",
+            data: {
+                labels: historyLabels,
+                datasets: LANES.map(lane => ({
+                    label: lane,
+                    data: historyData[lane],
+                    borderColor: LANE_COLORS[lane],
+                    backgroundColor: "transparent",
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    tension: 0.3,
+                })),
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                animation: { duration: 300 },
+                scales: {
+                    x: { ticks: { color: "#666", maxTicksLimit: 10 }, grid: { color: "#1a1a3e" } },
+                    y: { ticks: { color: "#666" }, grid: { color: "#1a1a3e" }, beginAtZero: true },
+                },
+                plugins: {
+                    legend: { labels: { color: "#aaa", boxWidth: 12 } },
+                },
+            },
+        });
+    }
+
+    // ── Heatmap color (green → yellow → red) ────
+    function heatColor(count, maxCount) {
+        const ratio = maxCount > 0 ? count / maxCount : 0;
+        if (ratio < 0.33) return `rgba(0, 230, 118, ${0.3 + ratio})`;
+        if (ratio < 0.66) return `rgba(255, 234, 0, ${0.3 + ratio * 0.5})`;
+        return `rgba(255, 23, 68, ${0.3 + ratio * 0.5})`;
+    }
+
+    // ── Update everything ───────────────────────
+    function update(data) {
+        document.getElementById("status-text").textContent = "LIVE";
+        document.getElementById("status-text").style.color = "#00e676";
+        document.getElementById("time-text").textContent = data.time_str || "";
+
+        // Emergency
+        const eBanner = document.getElementById("emergency-banner");
+        eBanner.className = data.emergency_active ? "emergency-banner active" : "emergency-banner";
+        if (data.emergency_active) emergencyCount++;
+
+        // Siren
+        const sBanner = document.getElementById("siren-banner");
+        if (data.siren && data.siren.siren_detected) {
+            sBanner.className = "siren-banner active";
+            document.getElementById("siren-conf").textContent = Math.round((data.siren.confidence || 0) * 100);
+        } else {
+            sBanner.className = "siren-banner";
+        }
+
+        let total = 0, maxCount = 0, busiestLane = "-", totalWait = 0;
+
+        // Find max for heatmap scaling
+        LANES.forEach(lane => {
+            const info = data.lanes[lane];
+            if (info && info.vehicle_count > maxCount) {
+                maxCount = info.vehicle_count;
+                busiestLane = lane;
+            }
+        });
+
+        LANES.forEach(lane => {
+            const info = data.lanes[lane];
+            if (!info) return;
+
+            const state = info.signal_state.toLowerCase();
+            total += info.vehicle_count;
+            totalWait += (info.estimated_wait || 0);
+
+            // Card
+            document.getElementById(`card-${lane}`).className = `lane-card ${state}`;
+            document.getElementById(`sig-${lane}`).className = `signal-dot ${state}`;
+            document.getElementById(`cnt-${lane}`).textContent = info.vehicle_count;
+            document.getElementById(`grn-${lane}`).textContent = info.green_time + "s";
+            document.getElementById(`den-${lane}`).textContent = info.density_percent + "%";
+            document.getElementById(`wait-${lane}`).textContent = (info.estimated_wait || 0) + "s";
+            document.getElementById(`bar-${lane}`).style.width = info.density_percent + "%";
+
+            // Heatmap
+            document.getElementById(`heat-${lane}`).style.background = heatColor(info.vehicle_count, Math.max(maxCount, 1));
+            document.getElementById(`hcount-${lane}`).textContent = info.vehicle_count;
+        });
+
+        // Summary stats
+        document.getElementById("total-vehicles").textContent = total;
+        document.getElementById("busiest-lane").textContent = busiestLane;
+        document.getElementById("avg-wait").textContent = Math.round(totalWait / 4) + "s";
+        document.getElementById("emergency-count").textContent = emergencyCount;
+
+        // History chart (keep last 60 points)
+        const timeLabel = data.time_str || new Date().toLocaleTimeString();
+        historyLabels.push(timeLabel);
+        if (historyLabels.length > 60) historyLabels.shift();
+
+        LANES.forEach(lane => {
+            const info = data.lanes[lane];
+            historyData[lane].push(info ? info.vehicle_count : 0);
+            if (historyData[lane].length > 60) historyData[lane].shift();
+        });
+
+        if (chart) chart.update();
+    }
+
+    // ── Fetch loop ──────────────────────────────
+    function fetchData() {
+        fetch("data.json?" + Date.now())
+            .then(r => r.json())
+            .then(update)
+            .catch(() => {
+                document.getElementById("status-text").textContent = "OFFLINE";
+                document.getElementById("status-text").style.color = "#ff1744";
+            });
+    }
+
+    // ── SocketIO (if dashboard server is running) ───
+    function trySocketIO() {
+        if (typeof io !== "undefined") {
+            const socket = io();
+            socket.on("traffic_update", update);
+        }
+    }
+
+    // ── Load history on startup ─────────────────
+    function loadHistory() {
+        fetch("history.json?" + Date.now())
+            .then(r => r.json())
+            .then(entries => {
+                if (!Array.isArray(entries)) return;
+                const last60 = entries.slice(-60);
+                last60.forEach(e => {
+                    historyLabels.push(e.time_str || "");
+                    LANES.forEach(lane => {
+                        historyData[lane].push(e.lanes && e.lanes[lane] ? e.lanes[lane].vehicles : 0);
+                    });
+                });
+                if (chart) chart.update();
+            })
+            .catch(() => {});
+    }
+
+    // ── Start ───────────────────────────────────
+    init();
+    loadHistory();
+    setInterval(fetchData, 800);
+
+    // Try SocketIO after a short delay (CDN script may load)
+    const sioScript = document.createElement("script");
+    sioScript.src = "https://cdn.socket.io/4.7.2/socket.io.min.js";
+    sioScript.onload = trySocketIO;
+    document.head.appendChild(sioScript);
+    </script>
+</body>
+</html>
