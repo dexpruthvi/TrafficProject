@@ -43,6 +43,17 @@
         /* LAYOUT */
         .container { max-width: 1300px; margin: 0 auto; padding: 16px; }
 
+        /* LIVE FEED */
+        .live-feed-panel {
+            background: #12122a; border-radius: 10px; padding: 18px;
+            border: 1px solid #222; margin-bottom: 16px;
+        }
+        .live-feed-panel h3 { color: #00e5ff; margin-bottom: 12px; font-size: 1em; }
+        .live-feed-panel img {
+            width: 100%; border-radius: 8px; border: 2px solid #333;
+            background: #000;
+        }
+
         /* TOP ROW: 4 lane cards */
         .lane-grid {
             display: grid; grid-template-columns: repeat(4, 1fr);
@@ -157,6 +168,12 @@
 
         <!-- 4 LANE CARDS -->
         <div class="lane-grid" id="lane-grid"></div>
+
+        <!-- LIVE CAMERA FEED -->
+        <div class="live-feed-panel">
+            <h3>Live Camera Feed &mdash; YOLOv8 Object Detection</h3>
+            <img id="live-feed" src="/video_feed" alt="Live Camera Feed (waiting for camera...)" />
+        </div>
 
         <!-- HEATMAP + HISTORY CHART -->
         <div class="bottom-row">

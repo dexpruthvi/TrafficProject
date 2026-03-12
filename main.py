@@ -18,6 +18,7 @@ import cv2
 import time
 import json
 import os
+import threading
 
 from config import (
     CAMERA_SOURCE, LANE_ROIS, EMERGENCY_ENABLED,
@@ -32,6 +33,10 @@ from emergency_handler import EmergencyHandler
 from arduino_comm import ArduinoController
 from siren_detector import SirenDetector
 from history_logger import HistoryLogger
+
+# Global: latest annotated frame for dashboard video stream
+latest_frame = None
+frame_lock = threading.Lock()
 
 
 # ── Terminal colors ─────────────────────────────────────────
@@ -61,6 +66,12 @@ def draw_lane_rois(frame):
 
 
 def draw_signal_info(frame, timings, lane_order, lane_states, emergency_active, siren_status):
+    # Semi-transparent overlay panel at top-left
+    overlay = frame.copy()
+    panel_h = len(lane_order) * 30 + 20
+    cv2.rectangle(overlay, (5, 5), (480, panel_h), (0, 0, 0), -1)
+    cv2.addWeighted(overlay, 0.6, frame, 0.4, 0, frame)
+
     y = 30
     for lane in lane_order:
         info = timings[lane]
@@ -72,23 +83,26 @@ def draw_signal_info(frame, timings, lane_order, lane_states, emergency_active, 
         else:
             color = (0, 0, 255)
 
+        # Draw signal circle
+        cv2.circle(frame, (22, y - 5), 8, color, -1)
+
         wait = info.get("estimated_wait", 0)
         text = (f"{lane}: {info['vehicle_count']} veh | "
                 f"G:{info['green_time']}s | "
                 f"D:{info['density_percent']}% | "
-                f"Wait:{wait}s | [{state}]")
-        cv2.putText(frame, text, (10, y), cv2.FONT_HERSHEY_SIMPLEX, 0.45, color, 1)
-        y += 22
+                f"Wait:{wait}s")
+        cv2.putText(frame, text, (38, y), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 255), 1, cv2.LINE_AA)
+        y += 30
 
     if emergency_active:
         cv2.putText(frame, "** EMERGENCY CORRIDOR ACTIVE **",
                     (10, frame.shape[0] - 40),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2, cv2.LINE_AA)
 
     if siren_status.get("siren_detected"):
         cv2.putText(frame, f"SIREN ({int(siren_status['confidence']*100)}%)",
                     (10, frame.shape[0] - 15),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2, cv2.LINE_AA)
     return frame
 
 
@@ -173,7 +187,8 @@ def main():
     _update_dashboard = None
     if DASHBOARD_ENABLED:
         try:
-            from dashboard_server import start_server, update_dashboard
+            from dashboard_server import start_server, update_dashboard, set_frame_source
+            set_frame_source(lambda: latest_frame, frame_lock)
             start_server()
             _update_dashboard = update_dashboard
         except Exception as e:
@@ -194,7 +209,7 @@ def main():
         from detector import VehicleDetector
         detector = VehicleDetector()
         print(f"[CAMERA] Opening: {CAMERA_SOURCE}")
-        cap = cv2.VideoCapture(CAMERA_SOURCE)
+        cap = cv2.VideoCapture(CAMERA_SOURCE, cv2.CAP_AVFOUNDATION)
         if not cap.isOpened():
             print("[ERROR] Cannot open camera/video!")
             print("  Tip: Set SIMULATION_MODE = True in config.py to demo without a camera")
@@ -239,6 +254,10 @@ def main():
                     continue
                 frame = cv2.resize(frame, (FRAME_WIDTH, FRAME_HEIGHT))
                 detections, annotated = detector.detect(frame)
+
+                # Store annotated frame for dashboard live stream
+                with frame_lock:
+                    latest_frame = annotated.copy()
 
                 should_emergency = False
                 emer_lane = None
@@ -334,6 +353,10 @@ def main():
                     annotated, current_timings, current_lane_order,
                     current_lane_states, emergency.is_active(), siren_status,
                 )
+                # Update the frame for dashboard live stream (with overlays)
+                with frame_lock:
+                    latest_frame = annotated.copy()
+
                 cv2.imshow("Traffic AI - Ryzen_4090Ti", annotated)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break

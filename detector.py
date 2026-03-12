@@ -1,9 +1,12 @@
-# VEHICLE DETECTOR - Uses YOLOv8 to detect vehicles in frame
+# VEHICLE DETECTOR - Uses YOLOv8 to detect objects in frame
 
 from ultralytics import YOLO
 import cv2
 import numpy as np
-from config import MODEL_PATH, CONFIDENCE_THRESHOLD, VEHICLE_CLASSES
+from config import (
+    MODEL_PATH, CONFIDENCE_THRESHOLD, VEHICLE_CLASSES,
+    DISPLAY_CLASSES, CLASS_COLORS,
+)
 
 
 class VehicleDetector:
@@ -14,31 +17,56 @@ class VehicleDetector:
 
     def detect(self, frame):
         """
-        Detect vehicles in a frame.
-        Returns list of detections, each with bbox, class, confidence.
-        Also returns the annotated frame (with boxes drawn).
+        Detect all objects in a frame (persons, cars, trucks, bicycles, traffic lights).
+        Returns:
+          - vehicle_detections: list of vehicle-only detections (for traffic logic)
+          - annotated_frame: frame with ALL detections drawn (like the demo image)
         """
         results = self.model(
             frame,
             conf=CONFIDENCE_THRESHOLD,
-            classes=list(VEHICLE_CLASSES.keys()),
+            classes=list(DISPLAY_CLASSES.keys()),
             verbose=False,
         )
 
-        detections = []
+        vehicle_detections = []
+        annotated_frame = frame.copy()
+
         for box in results[0].boxes:
             x1, y1, x2, y2 = map(int, box.xyxy[0])
             cls_id = int(box.cls[0])
             conf = float(box.conf[0])
-            detections.append({
-                "bbox": (x1, y1, x2, y2),
-                "class_id": cls_id,
-                "class_name": VEHICLE_CLASSES.get(cls_id, "unknown"),
-                "confidence": conf,
-            })
+            class_name = DISPLAY_CLASSES.get(cls_id, "unknown")
 
-        annotated_frame = results[0].plot()
-        return detections, annotated_frame
+            # Draw bounding box and label for ALL detected objects
+            color = CLASS_COLORS.get(class_name, (255, 255, 255))
+            self._draw_box(annotated_frame, x1, y1, x2, y2, class_name, conf, color)
+
+            # Only keep vehicles for traffic signal logic
+            if cls_id in VEHICLE_CLASSES:
+                vehicle_detections.append({
+                    "bbox": (x1, y1, x2, y2),
+                    "class_id": cls_id,
+                    "class_name": VEHICLE_CLASSES[cls_id],
+                    "confidence": conf,
+                })
+
+        return vehicle_detections, annotated_frame
+
+    def _draw_box(self, frame, x1, y1, x2, y2, class_name, conf, color):
+        """Draw a bounding box with a filled label background (like the demo image)."""
+        cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+
+        label = f"{class_name} {int(conf * 100)}%"
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        font_scale = 0.5
+        thickness = 1
+        (tw, th), baseline = cv2.getTextSize(label, font, font_scale, thickness)
+
+        # Filled rectangle behind the label text
+        cv2.rectangle(frame, (x1, y1 - th - 8), (x1 + tw + 4, y1), color, -1)
+        cv2.putText(frame, label, (x1 + 2, y1 - 4), font, font_scale,
+                    (255, 255, 255), thickness, cv2.LINE_AA)
 
     def is_emergency_vehicle(self, frame, detection):
         """
