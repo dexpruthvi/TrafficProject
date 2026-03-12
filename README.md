@@ -1,6 +1,6 @@
 # Dynamic AI Traffic Flow Optimizer & Emergency Grid
 
-> **Team Ryzen_4090Ti** | *India Innovates 2026*
+> **Team Ryzen_4090Ti** — *India Innovates 2026*
 
 A real-time adaptive traffic signal control system powered by **YOLOv8 Nano computer vision** and **FFT-based audio analysis**. The system dynamically allocates green light time based on live traffic density, detects emergency vehicles through dual visual + audio confirmation, and activates priority green corridors — all viewable through a real-time web dashboard.
 
@@ -109,15 +109,13 @@ pip install -r requirements.txt
 
 ### Dependencies
 
-| Package | Purpose |
-|---------|---------|
-| `ultralytics>=8.0.0` | YOLOv8 model loading and inference |
-| `opencv-python>=4.8.0` | Camera capture, frame processing, and annotation |
-| `numpy>=1.24.0` | Array operations, FFT for siren audio analysis |
-| `pyserial>=3.5` | Serial communication with Arduino |
-| `flask>=3.0.0` | Web dashboard server |
-| `flask-socketio>=5.3.0` | Real-time SocketIO events for live dashboard |
-| `sounddevice>=0.4.6` | Microphone input for siren detection |
+- **ultralytics >= 8.0.0** — YOLOv8 model loading and inference
+- **opencv-python >= 4.8.0** — Camera capture, frame processing, and annotation
+- **numpy >= 1.24.0** — Array operations, FFT for siren audio analysis
+- **pyserial >= 3.5** — Serial communication with Arduino
+- **flask >= 3.0.0** — Web dashboard server
+- **flask-socketio >= 5.3.0** — Real-time SocketIO events for live dashboard
+- **sounddevice >= 0.4.6** — Microphone input for siren detection
 
 ---
 
@@ -178,56 +176,46 @@ All settings are in `config.py`:
 
 ### Detection
 
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `MODEL_PATH` | `"yolov8n.pt"` | YOLOv8 Nano model (auto-downloads on first run) |
-| `CONFIDENCE_THRESHOLD` | `0.3` | Detection confidence cutoff |
-| `VEHICLE_CLASSES` | cars, motorcycles, buses, trucks | COCO class IDs used for traffic signal logic |
-| `DISPLAY_CLASSES` | 7 classes | All classes displayed on screen with bounding boxes |
+- `MODEL_PATH` = `"yolov8n.pt"` — YOLOv8 Nano model (auto-downloads on first run)
+- `CONFIDENCE_THRESHOLD` = `0.3` — Detection confidence cutoff
+- `VEHICLE_CLASSES` — cars, motorcycles, buses, trucks (COCO class IDs used for traffic signal logic)
+- `DISPLAY_CLASSES` — 7 classes displayed on screen with bounding boxes
 
 ### Signal Timing
 
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `MIN_GREEN_TIME` | `10s` | Minimum green light duration |
-| `MAX_GREEN_TIME` | `60s` | Maximum green light duration |
-| `YELLOW_TIME` | `3s` | Yellow light duration |
-| `DEFAULT_GREEN_TIME` | `30s` | Green time when no vehicles detected |
+- `MIN_GREEN_TIME` = `10s` — Minimum green light duration
+- `MAX_GREEN_TIME` = `60s` — Maximum green light duration
+- `YELLOW_TIME` = `3s` — Yellow light duration
+- `DEFAULT_GREEN_TIME` = `30s` — Green time when no vehicles detected
 
 ### Camera & Lanes
 
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `CAMERA_SOURCE` | `0` | Webcam index or path to video file |
-| `FRAME_WIDTH` | `1280` | Input frame resize width |
-| `FRAME_HEIGHT` | `720` | Input frame resize height |
-| `LANE_ROIS` | 4 quadrants | Region of interest per lane (x1, y1, x2, y2) |
+- `CAMERA_SOURCE` = `0` — Webcam index or path to video file
+- `FRAME_WIDTH` = `1280` — Input frame resize width
+- `FRAME_HEIGHT` = `720` — Input frame resize height
+- `LANE_ROIS` — 4 quadrants, region of interest per lane (x1, y1, x2, y2)
 
 ### Emergency & Siren
 
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `EMERGENCY_ENABLED` | `True` | Enable visual emergency vehicle detection |
-| `EMERGENCY_GREEN_TIME` | `45s` | Emergency corridor duration |
-| `SIREN_DETECTION_ENABLED` | `True` | Enable audio siren detection via microphone |
-| `SIREN_SAMPLE_RATE` | `22050` | Audio sample rate (Hz) |
-| `SIREN_DURATION` | `2s` | Audio window per FFT analysis |
-| `SIREN_MIN_FREQ` / `SIREN_MAX_FREQ` | `500–1500 Hz` | Siren frequency band |
-| `SIREN_ENERGY_THRESHOLD` | `0.3` | Minimum energy ratio in siren band to trigger |
+- `EMERGENCY_ENABLED` = `True` — Enable visual emergency vehicle detection
+- `EMERGENCY_GREEN_TIME` = `45s` — Emergency corridor duration
+- `SIREN_DETECTION_ENABLED` = `True` — Enable audio siren detection via microphone
+- `SIREN_SAMPLE_RATE` = `22050` — Audio sample rate (Hz)
+- `SIREN_DURATION` = `2s` — Audio window per FFT analysis
+- `SIREN_MIN_FREQ` / `SIREN_MAX_FREQ` = `500–1500 Hz` — Siren frequency band
+- `SIREN_ENERGY_THRESHOLD` = `0.3` — Minimum energy ratio in siren band to trigger
 
 ### Hardware & Services
 
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `SIMULATION_MODE` | `False` | Run with simulated traffic (no camera) |
-| `ARDUINO_ENABLED` | `False` | Enable Arduino serial connection |
-| `ARDUINO_PORT` | `"/dev/ttyUSB0"` | Serial port for Arduino |
-| `ARDUINO_BAUD` | `9600` | Serial baud rate |
-| `DASHBOARD_ENABLED` | `True` | Enable web dashboard |
-| `DASHBOARD_HOST` | `"0.0.0.0"` | Dashboard bind address |
-| `DASHBOARD_PORT` | `5050` | Dashboard server port |
-| `HISTORY_LOG_INTERVAL` | `5s` | Seconds between log entries |
-| `HISTORY_MAX_ENTRIES` | `500` | Max historical snapshots kept |
+- `SIMULATION_MODE` = `False` — Run with simulated traffic (no camera)
+- `ARDUINO_ENABLED` = `False` — Enable Arduino serial connection
+- `ARDUINO_PORT` = `"/dev/ttyUSB0"` — Serial port for Arduino
+- `ARDUINO_BAUD` = `9600` — Serial baud rate
+- `DASHBOARD_ENABLED` = `True` — Enable web dashboard
+- `DASHBOARD_HOST` = `"0.0.0.0"` — Dashboard bind address
+- `DASHBOARD_PORT` = `5050` — Dashboard server port
+- `HISTORY_LOG_INTERVAL` = `5s` — Seconds between log entries
+- `HISTORY_MAX_ENTRIES` = `500` — Max historical snapshots kept
 
 ---
 
@@ -241,12 +229,10 @@ green_time = MIN_GREEN + density_ratio × (MAX_GREEN - MIN_GREEN)
 
 **Example:**
 
-| Lane | Vehicles | Density | Green Time |
-|------|----------|---------|------------|
-| North | 15 | 50% | 35s |
-| South | 9 | 30% | 25s |
-| East | 3 | 10% | 15s |
-| West | 3 | 10% | 15s |
+- **North** — 15 vehicles, 50% density → 35s green
+- **South** — 9 vehicles, 30% density → 25s green
+- **East** — 3 vehicles, 10% density → 15s green
+- **West** — 3 vehicles, 10% density → 15s green
 
 Lanes are served in order of density — busiest lane gets green first.
 
@@ -254,12 +240,10 @@ Lanes are served in order of density — busiest lane gets green first.
 
 ## Arduino Wiring
 
-| Lane | RED Pin | YELLOW Pin | GREEN Pin |
-|------|---------|------------|-----------|
-| North | 2 | 3 | 4 |
-| South | 5 | 6 | 7 |
-| East | 8 | 9 | 10 |
-| West | 11 | 12 | 13 |
+- **North** — RED: Pin 2, YELLOW: Pin 3, GREEN: Pin 4
+- **South** — RED: Pin 5, YELLOW: Pin 6, GREEN: Pin 7
+- **East** — RED: Pin 8, YELLOW: Pin 9, GREEN: Pin 10
+- **West** — RED: Pin 11, YELLOW: Pin 12, GREEN: Pin 13
 
 **Serial Protocol:** `N:G,S:R,E:R,W:R\n`
 - Lane codes: `N` / `S` / `E` / `W`
@@ -285,9 +269,7 @@ Updates via SocketIO (real-time push) with polling fallback every 800ms.
 
 ## Controls
 
-| Key | Action |
-|-----|--------|
-| `q` | Close video window (camera mode) |
-| `Ctrl+C` | Quit the application |
+- Press `q` — Close video window (camera mode)
+- Press `Ctrl+C` — Quit the application
 
 On exit, the system displays session statistics including total snapshots processed, average/peak vehicle counts, and emergency events triggered.
